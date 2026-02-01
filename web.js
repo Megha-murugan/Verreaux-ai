@@ -113,6 +113,64 @@ function findMagicNumbers(code, lines) {
     return found;
 
 }
+// Rule 4 - OVERLY LONG FUNCTION
+// Logic: Look for lines that start a function using the "function" keyword
+// When we find one, we start counting lines going forward
+// We track { and } to know when the function body ends (depth goes back to 0)
+// If the total lines from start to end is more than 30, flag it
+function findLongFunctions(code, lines) {
+    let found = [];
+    let i = 0;
+
+    while (i < lines.length) {
+        // Check if this line has a function declaration like "function myFunc("
+        let funcMatch = lines[i].match(/function\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*\(/);
+
+        if (funcMatch) {
+            let funcName = funcMatch[1]; // this captures the function name
+            let startLine = i;           // remember where the function started
+            let depth = 0;               // this tracks how deep we are in braces
+            let bodyStarted = false;     // becomes true once we see the first {
+            let j = i;                   // j is our scanner, it moves forward line by line
+
+            // scan forward from the function start to find where it ends
+            while (j < lines.length) {
+                let opens  = (lines[j].match(/{/g) || []).length;
+                let closes = (lines[j].match(/}/g) || []).length;
+
+                depth = depth + opens;
+                depth = depth - closes;
+
+                // once we see the first { we know the body has started
+                if (opens > 0) bodyStarted = true;
+
+                // when depth comes back to 0 and we already saw the body, function is done
+                if (bodyStarted && depth === 0) {
+                    let totalLines = j - startLine + 1; // total lines from start to end
+
+                    // if the function is longer than 30 lines, flag it
+                    if (totalLines > 30) {
+                        found.push({
+                            line: startLine + 1,
+                            type: "Overly Long Function",
+                            severity: "error",
+                            explanation: "The function '" + funcName + "' is " + totalLines + " lines long. A function should do one small thing. Long functions are really hard to debug and test.",
+                            suggestion: "Break '" + funcName + "' into smaller functions. Each one should do just one job.",
+                            code: lines[startLine].trim()
+                        });
+                    }
+
+                    i = j; // jump i to where the function ended so we don't scan inside it again
+                    break;
+                }
+                j++;
+            }
+        }
+        i++;
+    }
+
+    return found;
+}
 
 // End of Rules
 
@@ -134,9 +192,10 @@ function analyzeCode() {
     let rule1 = findUnusedVariables(code, lines); 
     let rule2 = findExcessiveNesting(code, lines);
     let rule3 = findMagicNumbers(code, lines);
+    let rule4 = findLongFunctions(code, lines); 
 
     // Combine all results into one array
-    allIssues = rule1.concat(rule2).concat(rule3);
+    allIssues = rule1.concat(rule2).concat(rule3).concat(rule4);
     allIssues.sort(function (a, b) {
     return a.line - b.line;
     });  // sort by line number so issues appear in order
