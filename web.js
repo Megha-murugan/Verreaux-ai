@@ -1,10 +1,6 @@
-module.exports = function analyzeCode(code) 
-{
   // This array stores all the issues we find each issues is an object  
 
-  let issues = [];
-
-  let lines = code.split('\n');
+  let allIssues = [];
 
   // RULE 1 — UNUSED VARIABLES
   // Logic: Find every "let/const/var x" declaration.
@@ -14,7 +10,7 @@ module.exports = function analyzeCode(code)
   function findUnusedVariables(code, lines) {
     let found = [];
 
-    lines.forEach((line, index) => {
+    lines.forEach(function(line, index) {
 
       // Find variable declarations (let / const / var)
       let match = line.match(/\b(let|const|var)\s+([a-zA-Z_$][a-zA-Z0-9_$]*)/);
@@ -40,7 +36,7 @@ module.exports = function analyzeCode(code)
         found.push({
           line: index + 1,
           type: "Unused Variable",
-          severity: "low",
+          severity: "warning",
           explanation: "You declared a variable called '" + varName + "' but you never use it anywhere in your code. This is just dead code sitting there doing nothing.",
           suggestion: "Either delete this line, or use '" + varName + "' somewhere in your code.",
           code: line.trim()
@@ -51,8 +47,6 @@ module.exports = function analyzeCode(code)
     return found;
   }
 
-  issues.push(...findUnusedVariables(code, lines)); // ... represents spreading the array into individaul items
-  //Run the unused-variable rule, take all the problems it finds, and add them one by one to my main issues list
 
 //RULE 2 — EXCESSIVE NESTING (too many if/for inside each other)
 //Logic: Go line by line. Every "{" adds 1 to depth. Every "}" subtracts 1.
@@ -74,10 +68,10 @@ function findExcessiveNesting(code, lines) {
         found.push({
             line : index +1,
             type: "Excessive Nesting",
-        severity: "Warning",
-        explanation: "Your code is nested " + depth + " levels deep here. That means you have code inside code inside code inside code. This makes it really hard to read and understand.",
-        suggestion: "Try breaking the inner logic into a separate function, or use early returns to avoid deep nesting.",
-        code: line.trim()
+            severity: "warning",
+            explanation: "Your code is nested " + depth + " levels deep here. That means you have code inside code inside code inside code. This makes it really hard to read and understand.",
+            suggestion: "Try breaking the inner logic into a separate function, or use early returns to avoid deep nesting.",
+            code: line.trim()
         });
     }
 // Reset the flag when we come back to depth 4 or less
@@ -86,7 +80,6 @@ function findExcessiveNesting(code, lines) {
     }});
     return found;
 }
-  issues.push(...findExcessiveNesting(code, lines));
 
 // Rule 3 - MAGIC NUMBERS (random numbers in code without explanation)
 //Logic: Look for numbers (bigger than 1) that appear in expressions.
@@ -101,13 +94,12 @@ function findMagicNumbers(code, lines) {
         // skip comments
         if (line.trim().startsWith("//")) return;
         // skip empty lines
-        if (line.trim()=="") return;
+        if (line.trim()=== "") return;
         // find numbers that are 2 or bigger (0 , 10 and 1 are commom so usually fine)
         let matches = line.match(/\b([2-9][0-9]*|[1-9][0-9]{2,})\b/g);
         // \b match whole no not part of variable eg "var10x" (a|b means a or b)
         if (matches) {
-            let alreadyFlagged = false;// Only flag once per line so we don't spam
-            matches.forEach(function(num) {
+            // Only flag once per line so we don't spam
                 found.push({
                   line: index + 1,
                   type: "Magic Number",
@@ -116,20 +108,16 @@ function findMagicNumbers(code, lines) {
                   suggestion: "Create a named variable like 'const MAX_ITEMS = " + matches[0] + "' at the top and use that name instead.",
                   code: line.trim()
                 });
-            });
         }
     });
     return found;
 
 }
 
-   issues.push(...findMagicNumbers(code, lines));
-return issues;
-}
 // End of Rules
 
 //MAIN FUNCTION — runs all rules and collects results
-function analyzeCode(code) {
+function analyzeCode() {
     // Get the code the user typed
     let code = document.getElementById("codeInput").value;
     // if no code , exit
@@ -140,25 +128,24 @@ function analyzeCode(code) {
     // split the code into individual lines
     let lines = code.split("\n");
     // reset everything
-    issues = [];
+    allIssues = [];
     
     // run each rule
     let rule1 = findUnusedVariables(code, lines); 
-    issues.push(...rule1);
     let rule2 = findExcessiveNesting(code, lines);
-    issues.push(...rule2);
     let rule3 = findMagicNumbers(code, lines);
-    issues.push(...rule3);
 
     // Combine all results into one array
-    let allIssues = [...rule1, ...rule2, ...rule3];
-    allIssues.sort((a, b) => a.line - b.line); // sort by line number so issues appear in order
+    allIssues = rule1.concat(rule2).concat(rule3);
+    allIssues.sort(function (a, b) {
+    return a.line - b.line;
+    });  // sort by line number so issues appear in order
     // Give each issue a unique ID and set status to pending
-    allIssues.forEach(function(allIssue, index) {
-    allIssue.id = index + 1;
-    allIssue.status = "pending";
+    allIssues.forEach(function(issue, index) {
+    issue.id = index + 1;
+    issue.status = "pending";
   });
-   displayIssues(allIssues);
+   displayIssues();
 }
 // DISPLAY — takes the issues array and puts them on the screen
 function displayIssues() {
@@ -182,49 +169,138 @@ function displayIssues() {
     reportSection.classList.remove("hidden");
     //update the count batch
     document.getElementById("issueCount").textContent = allIssues.length;
-    // Decide  DECIDE — updates the status of one issue
-   // issueId = the issue number
-  // choice  = "accepted" or "rejected"
-  function decide(issueId, choice) {
-  // Find the issue in tDhe array
+    // Pick the right CSS class based on severity
+  function getSevClass(severity) {
+    if (severity === "error")   return "sev-error";
+    if (severity === "warning") return "sev-warning";
+    return "sev-info";
+  }
+
+  // Build one card for each issue
+  allIssues.forEach(function (issue) {
+    let card = document.createElement("div");
+    card.className = "issue-card";
+    card.id = "issue-card-" + issue.id;
+
+    let sevClass = getSevClass(issue.severity);
+
+    // This is the full card HTML including Accept and Reject buttons
+    card.innerHTML =
+      '<div class="issue-top">' +
+        '<span class="issue-line">Line ' + issue.line + '</span>' +
+        '<span class="issue-type">' + issue.type + '</span>' +
+        '<span class="sev ' + sevClass + '">' + issue.severity + '</span>' +
+      '</div>' +
+      '<div class="issue-explanation">' + issue.explanation + '</div>' +
+      '<div class="issue-code">' + escapeHtml(issue.code) + '</div>' +
+      '<div class="suggestion-box"><span>💡 Suggestion:</span> ' + issue.suggestion + '</div>' +
+      '<div class="action-row" id="actions-' + issue.id + '">' +
+        '<button class="btn-accept" onclick="decide(' + issue.id + ', \'accepted\')">✓ Accept</button>' +
+        '<button class="btn-reject" onclick="decide(' + issue.id + ', \'rejected\')">✗ Reject</button>' +
+      '</div>';
+
+    issuesList.appendChild(card);
+  });
+
+  // Update stats after displaying
+  updateStats();
+}
+
+// DECIDE — called when human clicks Accept or Reject on a card.
+// Updates the issue status and replaces buttons with a badge.
+function decide(issueId, choice) {
+  // Find the issue in the array
   let issue = allIssues.find(function (item) {
     return item.id === issueId;
   });
 
-  // If not found, stop
   if (!issue) return;
 
   // Update its status
   issue.status = choice;
+
+  // Replace the Accept/Reject buttons with a decided badge
+  let actionsDiv = document.getElementById("actions-" + issueId);
+  let badgeClass = (choice === "accepted") ? "decided-accepted" : "decided-rejected";
+  let badgeText  = (choice === "accepted") ? "✓ Accepted"       : "✗ Rejected";
+
+  actionsDiv.innerHTML = '<span class="decided-badge ' + badgeClass + '">' + badgeText + '</span>';
+
+  // Update the stats
+  updateStats();
 }
-// Get Stats - counts accepted, rejected, pending
-// Returns an object with the three counts.
-function getStats(){
+// UPDATE STATS — counts accepted, rejected, pending.
+// Enables the report button only when zero issues are pending.
+function updateStats() {
   let accepted = 0;
   let rejected = 0;
   let pending  = 0;
-  allIssues.forEach(function(issue){
+
+  allIssues.forEach(function (issue) {
     if (issue.status === "accepted") accepted++;
     if (issue.status === "rejected") rejected++;
-    if (issue.status === "pending") pending++;
-
+    if (issue.status === "pending")  pending++;
   });
-   return {
-    accepted: accepted,
-    rejected: rejected,
-    pending: pending
-   };
+
+  document.getElementById("statAccepted").textContent = accepted;
+  document.getElementById("statRejected").textContent = rejected;
+  document.getElementById("statPending").textContent  = pending;
+
+  // Enable report button only when nothing is pending
+  let btn = document.getElementById("btnReport");
+  if (pending === 0 && allIssues.length > 0) {
+    btn.disabled = false;
+    btn.textContent = "Generate Final Report";
+  } else {
+    btn.disabled = true;
+    btn.textContent = "Generate Final Report (Review All Issues First)";
+  }
 }
-// Generate Final Report
+
+// GENERATE REPORT — builds the final report table on the page.
+// Called when human clicks the Generate Report button.
 function generateReport() {
-    let report = [];
-    allIssues.forEach(function(issue) {
-        report.push({
-            line:  issue.line,
-            type:  issue.type,
-        })
-    })
-}
+  let reportRows = document.getElementById("reportRows");
+  reportRows.innerHTML = "";
+
+  allIssues.forEach(function (issue) {
+    let statusClass = (issue.status === "accepted") ? "decided-accepted" : "decided-rejected";
+    let statusText  = (issue.status === "accepted") ? "✓ Accepted"       : "✗ Rejected";
+
+    let sevClass = "sev-info";
+    if (issue.severity === "error")   sevClass = "sev-error";
+    if (issue.severity === "warning") sevClass = "sev-warning";
+
+    let row = document.createElement("div");
+    row.className = "report-row";
+
+    row.innerHTML =
+      '<div class="rl">' +
+        '<strong>Line ' + issue.line + '</strong> — ' + issue.type +
+        ' <span class="sev ' + sevClass + '">' + issue.severity + '</span>' +
+      '</div>' +
+      '<div class="rr">' +
+        '<span class="decided-badge ' + statusClass + '">' + statusText + '</span>' +
+      '</div>';
+
+    reportRows.appendChild(row);
+  });
 }
 
+// CLEAR — resets everything back to the start
+function clearAll() {
+  document.getElementById("codeInput").value = "";
+  document.getElementById("issuesList").innerHTML = "";
+  document.getElementById("issuesSection").classList.add("hidden");
+  document.getElementById("noIssues").classList.add("hidden");
+  document.getElementById("reportSection").classList.add("hidden");
+  allIssues = [];
+}
 
+// HELPER — escapes HTML so pasted code doesn't break the page
+
+function escapeHtml(text) {
+  let div = document.createElement("div");
+  div.appendChild(document.createTextNode(text));
+  return div.innerHTML;
+}
