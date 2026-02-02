@@ -113,6 +113,7 @@ function findMagicNumbers(code, lines) {
     return found;
 
 }
+
 // Rule 4 - OVERLY LONG FUNCTION
 // Logic: Look for lines that start a function using the "function" keyword
 // When we find one, we start counting lines going forward
