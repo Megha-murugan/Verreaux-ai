@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Review Results</title>
-    <link rel="stylesheet" href="script.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
@@ -12,38 +12,94 @@
 <div class="container">
     <h2>Detected Issues</h2>
 
-    <div class="issue">
-        <p><strong>Line Number:</strong> </p>
-        <p><strong>Issue Type:</strong> </p>
-        <p><strong>Severity:</strong> <span class="medium"></span></p>
-        <p><strong>Explanation:</strong> </p>
-        <p><strong>Suggested Improvement:</strong> </p>
-
-        <label><input type="checkbox"> Accept</label>
-        <label><input type="checkbox"> Reject</label>
-    </div>
-
-    <div class="issue">
-        <p><strong>Line Number:</strong></p>
-        <p><strong>Issue Type:</strong> </p>
-        <p><strong>Severity:</strong> <span class="high"></span></p>
-        <p><strong>Explanation:</strong> </p>
-        <p><strong>Suggested Improvement:</strong></p>
-
-        <label><input type="checkbox"> Accept</label>
-        <label><input type="checkbox"> Reject</label>
+    <div id="issuesList">
+        <!-- Issues will be dynamically inserted here by web.js -->
     </div>
 </div>
 
 <div class="container">
     <h2>Final Review Report</h2>
-    <p>Status: <strong></strong></p>
+    <p>Status: <strong id="reviewStatus">Analyzing...</strong></p>
 </div>
+
 <div class="brand">verreaux-ai</div>
+
 <div class="back-btn-container">
     <a href="index.html" class="back-btn">← Back to Code Review</a>
 </div>
 
+<script src="web.js"></script>
+<script>
+// Load code from sessionStorage and analyze it
+window.onload = function() {
+    let code = sessionStorage.getItem("codeToReview");
+    if (!code) {
+        document.getElementById("issuesList").innerHTML = '<p style="color: #f87171;">No code found. Please submit code first.</p>';
+        document.getElementById("reviewStatus").textContent = "No Data";
+        return;
+    }
+    
+    // Put the code into a hidden textarea so web.js can read it
+    let textarea = document.createElement("textarea");
+    textarea.id = "codeInput";
+    textarea.value = code;
+    textarea.style.display = "none";
+    document.body.appendChild(textarea);
+    
+    // Split code into lines for analysis
+    let lines = code.split("\n");
+    
+    // Run all the rules from web.js
+    let allIssues = [];
+    
+    let rule1 = findUnusedVariables(code, lines);
+    let rule2 = findExcessiveNesting(code, lines);
+    let rule3 = findMagicNumbers(code, lines);
+    let rule4 = findLongFunctions(code, lines);
+    
+    allIssues = rule1.concat(rule2).concat(rule3).concat(rule4);
+    allIssues.sort(function(a, b) {
+        return a.line - b.line;
+    });
+    
+    // Display the issues
+    let issuesList = document.getElementById("issuesList");
+    
+    if (allIssues.length === 0) {
+        issuesList.innerHTML = '<p style="color: #4ade80; font-size: 18px;">✓ No issues detected! Your code looks good.</p>';
+        document.getElementById("reviewStatus").textContent = "Passed";
+        return;
+    }
+    
+    // Create issue cards
+    allIssues.forEach(function(issue) {
+        let issueDiv = document.createElement("div");
+        issueDiv.className = "issue";
+        
+        let severityClass = "";
+        if (issue.severity === "error") severityClass = "high";
+        else if (issue.severity === "warning") severityClass = "medium";
+        else severityClass = "low";
+        
+        issueDiv.innerHTML = 
+            '<p><strong>Line Number:</strong> ' + issue.line + '</p>' +
+            '<p><strong>Issue Type:</strong> ' + issue.type + '</p>' +
+            '<p><strong>Severity:</strong> <span class="' + severityClass + '">' + issue.severity.toUpperCase() + '</span></p>' +
+            '<p><strong>Explanation:</strong> ' + issue.explanation + '</p>' +
+            '<p><strong>Suggested Improvement:</strong> ' + issue.suggestion + '</p>' +
+            '<label><input type="checkbox"> Accept</label>' +
+            '<label><input type="checkbox"> Reject</label>';
+        
+        issuesList.appendChild(issueDiv);
+    });
+    
+    // Update status
+    let hasErrors = allIssues.some(function(issue) {
+        return issue.severity === "error";
+    });
+    document.getElementById("reviewStatus").textContent = hasErrors ? "Needs Revision" : "Review Complete";
+};
+</script>
 
 </body>
 </html>
