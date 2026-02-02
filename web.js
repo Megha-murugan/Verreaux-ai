@@ -364,4 +364,8 @@ function escapeHtml(text) {
   div.appendChild(document.createTextNode(text));
   return div.innerHTML;
 }
+<<<<<<< HEAD
 // End of web.js
+=======
+// End of web.js 
+>>>>>>> 9579a6a51ab08415283d86c3b6ca8c6d14ac7744
