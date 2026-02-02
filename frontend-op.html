@@ -18,8 +18,18 @@
 </div>
 
 <div class="container">
+    <h2>Review Actions</h2>
+    <p>Review all the issues above and accept or reject them. Once all issues are reviewed, you can generate the final report.</p>
+    <button id="btnGenerateReport" onclick="generateReport()" style="margin-top: 15px;">Generate Final Report</button>
+</div>
+
+<div class="container" id="reportSection" style="display: none;">
     <h2>Final Review Report</h2>
-    <p>Status: <strong id="reviewStatus">Analyzing...</strong></p>
+    <p>Status: <strong id="reviewStatus">Complete</strong></p>
+    
+    <div id="reportRows">
+        <!-- Report rows will be inserted here -->
+    </div>
 </div>
 
 <div class="brand">verreaux-ai</div>
@@ -30,12 +40,15 @@
 
 <script src="web.js"></script>
 <script>
+// Store all issues globally so web.js functions can access them
+let allIssues = [];
+
 // Load code from sessionStorage and analyze it
 window.onload = function() {
     let code = sessionStorage.getItem("codeToReview");
     if (!code) {
         document.getElementById("issuesList").innerHTML = '<p style="color: #f87171;">No code found. Please submit code first.</p>';
-        document.getElementById("reviewStatus").textContent = "No Data";
+        document.getElementById("btnGenerateReport").style.display = "none";
         return;
     }
     
@@ -50,8 +63,6 @@ window.onload = function() {
     let lines = code.split("\n");
     
     // Run all the rules from web.js
-    let allIssues = [];
-    
     let rule1 = findUnusedVariables(code, lines);
     let rule2 = findExcessiveNesting(code, lines);
     let rule3 = findMagicNumbers(code, lines);
@@ -62,19 +73,26 @@ window.onload = function() {
         return a.line - b.line;
     });
     
+    // Give each issue an ID and status
+    allIssues.forEach(function(issue, index) {
+        issue.id = index + 1;
+        issue.status = "pending";
+    });
+    
     // Display the issues
     let issuesList = document.getElementById("issuesList");
     
     if (allIssues.length === 0) {
         issuesList.innerHTML = '<p style="color: #4ade80; font-size: 18px;">✓ No issues detected! Your code looks good.</p>';
-        document.getElementById("reviewStatus").textContent = "Passed";
+        document.getElementById("btnGenerateReport").style.display = "none";
         return;
     }
     
-    // Create issue cards
+    // Create issue cards with Accept/Reject buttons
     allIssues.forEach(function(issue) {
         let issueDiv = document.createElement("div");
         issueDiv.className = "issue";
+        issueDiv.id = "issue-" + issue.id;
         
         let severityClass = "";
         if (issue.severity === "error") severityClass = "high";
@@ -87,17 +105,67 @@ window.onload = function() {
             '<p><strong>Severity:</strong> <span class="' + severityClass + '">' + issue.severity.toUpperCase() + '</span></p>' +
             '<p><strong>Explanation:</strong> ' + issue.explanation + '</p>' +
             '<p><strong>Suggested Improvement:</strong> ' + issue.suggestion + '</p>' +
-            '<label><input type="checkbox"> Accept</label>' +
-            '<label><input type="checkbox"> Reject</label>';
+            '<div id="actions-' + issue.id + '">' +
+                '<label><input type="checkbox" onchange="acceptIssue(' + issue.id + ')"> Accept</label>' +
+                '<label><input type="checkbox" onchange="rejectIssue(' + issue.id + ')"> Reject</label>' +
+            '</div>';
         
         issuesList.appendChild(issueDiv);
     });
-    
-    // Update status
-    let hasErrors = allIssues.some(function(issue) {
-        return issue.severity === "error";
+};
+
+// Accept an issue
+function acceptIssue(issueId) {
+    let issue = allIssues.find(function(item) {
+        return item.id === issueId;
     });
-    document.getElementById("reviewStatus").textContent = hasErrors ? "Needs Revision" : "Review Complete";
+    if (issue) {
+        issue.status = "accepted";
+        updateIssueDisplay(issueId, "accepted");
+    }
+}
+
+// Reject an issue
+function rejectIssue(issueId) {
+    let issue = allIssues.find(function(item) {
+        return item.id === issueId;
+    });
+    if (issue) {
+        issue.status = "rejected";
+        updateIssueDisplay(issueId, "rejected");
+    }
+}
+
+// Update the issue display to show decision
+function updateIssueDisplay(issueId, decision) {
+    let actionsDiv = document.getElementById("actions-" + issueId);
+    let badgeText = (decision === "accepted") ? "✓ Accepted" : "✗ Rejected";
+    let badgeColor = (decision === "accepted") ? "#4ade80" : "#f87171";
+    
+    actionsDiv.innerHTML = '<p style="color: ' + badgeColor + '; font-weight: bold; margin-top: 10px;">' + badgeText + '</p>';
+}
+
+// Override generateReport to show the report section
+let originalGenerateReport = generateReport;
+generateReport = function() {
+    // Check if all issues have been reviewed
+    let pending = allIssues.filter(function(issue) {
+        return issue.status === "pending";
+    });
+    
+    if (pending.length > 0) {
+        alert("Please review all issues (Accept or Reject) before generating the report.");
+        return;
+    }
+    
+    // Call the original generateReport from web.js
+    originalGenerateReport();
+    
+    // Show the report section
+    document.getElementById("reportSection").style.display = "block";
+    
+    // Scroll to report
+    document.getElementById("reportSection").scrollIntoView({ behavior: "smooth" });
 };
 </script>
 
