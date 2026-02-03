@@ -121,3 +121,15 @@ label {
 .back-btn:hover {
     background-color: #2563eb;
 }
+
+.report-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px;
+    border-bottom: 1px solid #334155;
+}
+
+.hidden {
+    display: none;
+}
+

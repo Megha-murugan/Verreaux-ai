@@ -19,8 +19,17 @@
 
 <div class="container">
     <h2>Final Review Report</h2>
-    <p>Status: <strong id="reviewStatus">Review Complete</strong></p>
+    <p><button onclick="generateReport()">Generate Report</button>
+</button>
+
+<div id="finalReport" class="container" style="display:none;">
+    <h2>Final Review Report</h2>
+    <div id="reportContent"></div>
 </div>
+
+</p>
+</div>
+
 
 <div class="brand">verreaux-ai</div>
 
@@ -50,7 +59,7 @@ window.onload = function() {
     let rule3 = findMagicNumbers(code, lines);
     let rule4 = findLongFunctions(code, lines);
     
-    let allIssues = rule1.concat(rule2).concat(rule3).concat(rule4);
+    allIssues = rule1.concat(rule2).concat(rule3).concat(rule4);
     allIssues.sort(function(a, b) {
         return a.line - b.line;
     });
@@ -98,8 +107,33 @@ window.onload = function() {
     let hasErrors = allIssues.some(function(issue) {
         return issue.severity === "error";
     });
-    document.getElementById("reviewStatus").textContent = hasErrors ? "Needs Revision" : "Review Complete";
 };
+
+function generateReport() {
+    let reportBox = document.getElementById("finalReport");
+    let reportContent = document.getElementById("reportContent");
+
+    reportContent.innerHTML = "";
+
+    if (!allIssues || allIssues.length === 0) {
+        reportContent.innerHTML = "<p style='color:#4ade80'>✓ No issues found. Code approved.</p>";
+    } else {
+        allIssues.forEach(function(issue) {
+            let div = document.createElement("div");
+            div.style.borderBottom = "1px solid #334155";
+            div.style.padding = "8px 0";
+
+            div.innerHTML =
+                "<strong>Line " + issue.line + "</strong> — " +
+                issue.type +
+                " <span style='color:#38bdf8'>(" + issue.severity + ")</span>";
+
+            reportContent.appendChild(div);
+        });
+    }
+
+    reportBox.style.display = "block";
+}
 </script>
 
 </body>

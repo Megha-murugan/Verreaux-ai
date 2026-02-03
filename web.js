@@ -321,6 +321,7 @@ function updateStats() {
 // Called when human clicks the Generate Report button.
 function generateReport() {
   let reportRows = document.getElementById("reportRows");
+  if (!reportRows) return;
   reportRows.innerHTML = "";
 
   allIssues.forEach(function (issue) {
